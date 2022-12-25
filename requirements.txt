@@ -1,16 +1,19 @@
 #aiohttp
 aiohttp==3.7.3
 aiohttp-jinja2==1.5
+numpy==1.23.5
 
 #Jinja
 Jinja2==3.0.3
 
 # Databases
 SQLAlchemy==1.4.43
-psycopg2
+#psycopg2  !!!not for async
+asyncpg
+alembic
+marshmallow
 
 #python
 pytz
 python-dotenv
 ipython
-numpy
