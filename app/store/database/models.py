@@ -3,7 +3,7 @@ from sqlalchemy.engine.url import URL
 from sqlalchemy.ext.declarative import declarative_base
 import os
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy import (
     Column,
     String,
@@ -58,6 +58,10 @@ class BaseStructure(Base):
     name = Column('name', String(20), unique=True, nullable=False, primary_key=True)
 
 
+class ElementType(BaseStructure):
+    __tablename__ = 'base_structure'
+    # name = Column('name', String(20), unique=True, nullable=False, primary_key=True)
+
 class Structure(BaseICom):
     __tablename__ = 'structure_table'
     id = Column(Integer, autoincrement=True)
@@ -77,7 +81,12 @@ class SectionProperty(BaseICom, BaseCOG):
     reference_type = Column('reference_type', String(20), nullable=False)
     reference_number = Column('reference_number', Float(precision=1), nullable=False)
     __table_args__ = (ForeignKeyConstraint(['reference_type', 'reference_number'],
-        ['structure_table.struct_type', 'structure_table.number'], name='reference_1'), {})
+        ['structure_table.struct_type', 'structure_table.number'], name='reference'), {})
+    position_type = Column('reference_type', String(20), nullable=False)
+    Position_number = Column('reference_number', Float(precision=1), nullable=False)
+    __table_args__ = (ForeignKeyConstraint(['position_type', 'position_number'],
+                                           ['structure_table.struct_type', 'structure_table.number'],
+                                           name='position'), {})
     area = Column(Float())
     inertia_xx = Column(Float())
     inertia_yy = Column(Float())
@@ -102,17 +111,42 @@ class Mass(BaseICom, BaseCOG):
         ['structure_table.struct_type', 'structure_table.number'], name='reference_1'), {})
 
 
+class NodeElement(Base):
+    __tablename__ = 'NodeElement5'
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    node = Column('nodeID', Integer, ForeignKey('Node.node_id'))
+    element = Column('elementID', Integer, ForeignKey('Element.element_id'))
+
+
 class Node(BaseICom, BaseCOG):
-    __tablename__ = 'node_table'
+    __tablename__ = 'Node'
     name_id = Column(Integer, nullable=False, unique=True)
     reference_type1 = Column('reference_type1', String(20), nullable=False)
     reference_number1 = Column('reference_number1', Float(precision=1), nullable=False)
     __table_args__ = (ForeignKeyConstraint(['reference_type1', 'reference_number1'],
                                            ['structure_table.struct_type', 'structure_table.number'],
-                                           name='reference_2'), {})
+                                           name='reference_1'), {})
     reference_type2 = Column('reference_type2', String(20), nullable=False)
     reference_number2 = Column('reference_number2', Float(precision=1), nullable=False)
     reference_side = Column('reference_side', String(20), nullable=True)
     __table_args__ = (ForeignKeyConstraint(['reference_type2', 'reference_number2', 'reference_side'],
                                            ['structure_table.struct_type', 'structure_table.number', 'structure_table.side'],
-                                           name='reference_2'), {})
+                                               name='reference_2'), {})
+    elements = relationship('Element', secondary=NodeElement.__table__, backref='Node')
+
+
+class Element(BaseICom):
+    __tablename__ = 'Element'
+    name_id = Column('element_id', Integer, nullable=False, unique=True)
+    element_type = Column('element_type', String, ForeignKey('Element_type.name'), nullable=False) #foreign key to element type
+    nodes = relationship('Node', secondary=NodeElement.__table__, backref='Element')
+    properties = relationship('Property', Integer, ForeignKey('Property.property_id'), nullable=True)
+    offset = Column(String)
+
+
+class Property(BaseICom, BaseCOG):
+    """
+    TODO: COG to be concidered, what point has to be used?
+    """
+    name_id = Column('property_id', Integer, nullable=False, unique=True)
+    cross_section = Column('cross-section')
