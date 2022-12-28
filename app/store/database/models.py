@@ -44,7 +44,7 @@ Session = sessionmaker(
 
 class BaseICom(Base):
     __abstract__ = True
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False, unique=True)
     comment = Column('comment', String())
 
 class BaseCOG(Base):
@@ -57,35 +57,36 @@ class BaseStructure(Base):
     __tablename__ = 'base_structure'
     name = Column('name', String(20), unique=True, nullable=False, primary_key=True)
 
-
-class ElementType(BaseStructure):
-    __tablename__ = 'base_structure'
+#
+# class ElementType(BaseStructure):
+#     __tablename__ = 'element_type'
     # name = Column('name', String(20), unique=True, nullable=False, primary_key=True)
 
 class Structure(BaseICom):
     __tablename__ = 'structure_table'
-    id = Column(Integer, autoincrement=True)
     struct_type = Column('struct_type', ForeignKey('base_structure.name'), nullable=False)
     number = Column('number', Float(precision=1), nullable=False)
     side = Column('side', String(3), nullable=True)
     reference = PrimaryKeyConstraint(struct_type, number, side, name='unique_reference')
-
-    @hybrid_property
-    def reference_add(self):
-        return self.struct_type + self.number
+    #
+    # @hybrid_property
+    # def reference_add(self):
+    #     return self.struct_type + self.number
 
 
 class SectionProperty(BaseICom, BaseCOG):
     __tablename__ = 'section_property'
-    name = Column(String)
+    name_id = Column('name_id', Integer, nullable=False, unique=True)
     reference_type = Column('reference_type', String(20), nullable=False)
     reference_number = Column('reference_number', Float(precision=1), nullable=False)
-    __table_args__ = (ForeignKeyConstraint(['reference_type', 'reference_number'],
-        ['structure_table.struct_type', 'structure_table.number'], name='reference'), {})
-    position_type = Column('reference_type', String(20), nullable=False)
-    Position_number = Column('reference_number', Float(precision=1), nullable=False)
-    __table_args__ = (ForeignKeyConstraint(['position_type', 'position_number'],
-                                           ['structure_table.struct_type', 'structure_table.number'],
+    side = Column('side', String(3), nullable=True)
+    __table_args__ = (ForeignKeyConstraint(['reference_type', 'reference_number', 'side'],
+        ['structure_table.struct_type', 'structure_table.number', 'structure_table.side'], name='reference'), {})
+    position_type = Column('position_type', String(20), nullable=False)
+    position_number = Column('position_number', Float(precision=1), nullable=False)
+    position_side = Column('position_side', String(3), nullable=True)
+    __table_args__ = (ForeignKeyConstraint(['position_type', 'position_number', 'position_side'],
+                                           ['structure_table.struct_type', 'structure_table.number', 'structure_table.side'],
                                            name='position'), {})
     area = Column(Float())
     inertia_xx = Column(Float())
@@ -107,40 +108,43 @@ class Mass(BaseICom, BaseCOG):
     weight = Column(Float())
     reference_type = Column('reference_type', String(20), nullable=False)
     reference_number = Column('reference_number', Float(precision=1), nullable=False)
-    __table_args__ = (ForeignKeyConstraint(['reference_type', 'reference_number'],
-        ['structure_table.struct_type', 'structure_table.number'], name='reference_1'), {})
+    side = Column('side', String(3), nullable=True)
+    __table_args__ = (ForeignKeyConstraint(['reference_type', 'reference_number', 'side'],
+                                           ['structure_table.struct_type', 'structure_table.number',
+                                            'structure_table.side'], name='reference'), {})
 
 
 class NodeElement(Base):
-    __tablename__ = 'NodeElement5'
+    __tablename__ = 'NodeElement'
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    node = Column('nodeID', Integer, ForeignKey('Node.node_id'))
-    element = Column('elementID', Integer, ForeignKey('Element.element_id'))
+    node = Column('nodeID', Integer, ForeignKey('node.node_id'))
+    element = Column('elementID', Integer, ForeignKey('element.element_id'))
 
 
 class Node(BaseICom, BaseCOG):
-    __tablename__ = 'Node'
-    name_id = Column(Integer, nullable=False, unique=True)
+    __tablename__ = 'node'
+    node_id = Column('node_id', Integer, nullable=False, unique=True)
     reference_type1 = Column('reference_type1', String(20), nullable=False)
     reference_number1 = Column('reference_number1', Float(precision=1), nullable=False)
-    __table_args__ = (ForeignKeyConstraint(['reference_type1', 'reference_number1'],
-                                           ['structure_table.struct_type', 'structure_table.number'],
-                                           name='reference_1'), {})
+    reference_side1 = Column('reference_side1', String(3), nullable=True)
+    __table_args__ = (ForeignKeyConstraint(['reference_type1', 'reference_number1', 'reference_side1'],
+                                           ['structure_table.struct_type', 'structure_table.number',
+                                            'structure_table.side'], name='reference_1'), {})
     reference_type2 = Column('reference_type2', String(20), nullable=False)
     reference_number2 = Column('reference_number2', Float(precision=1), nullable=False)
-    reference_side = Column('reference_side', String(20), nullable=True)
-    __table_args__ = (ForeignKeyConstraint(['reference_type2', 'reference_number2', 'reference_side'],
-                                           ['structure_table.struct_type', 'structure_table.number', 'structure_table.side'],
-                                               name='reference_2'), {})
-    elements = relationship('Element', secondary=NodeElement.__table__, backref='Node')
+    reference_side2 = Column('reference_side2', String(3), nullable=True)
+    __table_args__ = (ForeignKeyConstraint(['reference_type2', 'reference_number2', 'reference_side2'],
+                                           ['structure_table.struct_type', 'structure_table.number',
+                                            'structure_table.side'], name='reference_2'), {})
+    # elements = relationship('element', secondary=NodeElement.__table__, backref='node')
 
 
 class Element(BaseICom):
-    __tablename__ = 'Element'
-    name_id = Column('element_id', Integer, nullable=False, unique=True)
-    element_type = Column('element_type', String, ForeignKey('Element_type.name'), nullable=False) #foreign key to element type
-    nodes = relationship('Node', secondary=NodeElement.__table__, backref='Element')
-    properties = relationship('Property', Integer, ForeignKey('Property.property_id'), nullable=True)
+    __tablename__ = 'element'
+    element_id = Column('element_id', Integer, nullable=False, unique=True)
+    element_type = Column('base_structure', String, ForeignKey('base_structure.name'), nullable=False) #foreign key to element type
+    # nodes = relationship('node', secondary=NodeElement.__table__, backref='element')
+    property = Column('property', Integer, ForeignKey('property.property_id'))
     offset = Column(String)
 
 
@@ -148,5 +152,6 @@ class Property(BaseICom, BaseCOG):
     """
     TODO: COG to be concidered, what point has to be used?
     """
+    __tablename__ = 'property'
     name_id = Column('property_id', Integer, nullable=False, unique=True)
-    cross_section = Column('cross-section')
+    cross_section = Column('cross-section', Integer, ForeignKey('section_property.name_id'))
