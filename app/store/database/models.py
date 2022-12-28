@@ -117,8 +117,8 @@ class Mass(BaseICom, BaseCOG):
 class NodeElement(Base):
     __tablename__ = 'NodeElement'
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    node = Column('nodeID', Integer, ForeignKey('node.node_id'))
-    element = Column('elementID', Integer, ForeignKey('element.element_id'))
+    node = Column('node', Integer, ForeignKey('node.node_id'))
+    element = Column('element', Integer, ForeignKey('element.element_id'))
 
 
 class Node(BaseICom, BaseCOG):
@@ -136,14 +136,14 @@ class Node(BaseICom, BaseCOG):
     __table_args__ = (ForeignKeyConstraint(['reference_type2', 'reference_number2', 'reference_side2'],
                                            ['structure_table.struct_type', 'structure_table.number',
                                             'structure_table.side'], name='reference_2'), {})
-    # elements = relationship('element', secondary=NodeElement.__table__, backref='node')
+    elements = relationship('element', secondary=NodeElement.__table__, backref='node')
 
 
 class Element(BaseICom):
     __tablename__ = 'element'
     element_id = Column('element_id', Integer, nullable=False, unique=True)
     element_type = Column('base_structure', String, ForeignKey('base_structure.name'), nullable=False) #foreign key to element type
-    # nodes = relationship('node', secondary=NodeElement.__table__, backref='element')
+    nodes = relationship('node', secondary=NodeElement.__table__, backref='element')
     property = Column('property', Integer, ForeignKey('property.property_id'))
     offset = Column(String)
 
