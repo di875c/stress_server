@@ -31,7 +31,9 @@ class BaseSchema(Schema):
 class BaseSchema_add(BaseSchema):
     comment = fields.Str()
     id = fields.Integer()
-
+# class BaseSchema_add1(Schema):
+#     comment = fields.Str()
+#     id = fields.Integer()
 
 class BaseCOG(Schema):
     cog_x = fields.Float()
@@ -41,7 +43,6 @@ class BaseCOG(Schema):
 
 class BaseStructureSchema(BaseSchema):
     __model__ = models.BaseStructure
-    # name = fields.Str(validate=["Frame", "Stringer", "Rib"])
     name = fields.Str()
 
 
@@ -65,7 +66,6 @@ class SectionPropertySchema(BaseSchema_add, BaseCOG):
 
 class MaterialSchema(BaseSchema_add):
     __model__ = models.Material
-    name_id = fields.Integer()
     density = fields.Float()
     eu = fields.Float()
     nu = fields.Float()
@@ -81,11 +81,31 @@ class MassSchema(BaseSchema_add, BaseCOG):
     weight = fields.Float()
 
 
+# class NodeSchema(BaseSchema_add1, BaseCOG):
 class NodeSchema(BaseSchema_add, BaseCOG):
     __model__ = models.Node
-    name_id = fields.Integer()
     reference_type1 = fields.Str()
     reference_number1 = fields.Float()
+    reference_side1 = fields.Str()
     reference_type2 = fields.Str()
     reference_number2 = fields.Float()
-    reference_side = fields.Str()
+    reference_side2 = fields.Str()
+    elements = fields.List(fields.Nested("ElementSchema", only=("id",)))
+
+
+# class ElementSchema(BaseSchema_add1):
+class ElementSchema(BaseSchema_add):
+    __model__ = models.Element
+    element_type = fields.Str()
+    nodes = fields.List(fields.Nested(lambda: NodeSchema(only=("id",))))
+    property_id = fields.Integer()
+    offset = fields.Str()
+
+
+# class NodeElementSchema(Schema):
+class NodeElementSchema(BaseSchema):
+    __model__ = models.NodeElement
+    node = fields.Integer()
+    element = fields.Integer()
+#     node = fields.Nested("NodeSchema", only=("id",))
+#     element = fields.Nested("ElementSchema", only=("id",))

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy import (
     Column,
+    Identity,
     String,
     Integer,
     Float,
@@ -44,7 +45,7 @@ Session = sessionmaker(
 
 class BaseICom(Base):
     __abstract__ = True
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False, unique=True)
+    id = Column(Integer, Identity(start=1, cycle=True), primary_key=True)
     comment = Column('comment', String())
 
 class BaseCOG(Base):
@@ -76,7 +77,7 @@ class Structure(BaseICom):
 
 class SectionProperty(BaseICom, BaseCOG):
     __tablename__ = 'section_property'
-    name_id = Column('name_id', Integer, nullable=False, unique=True)
+    # name_id = Column('name_id', Integer, nullable=False, unique=True)
     reference_type = Column('reference_type', String(20), nullable=False)
     reference_number = Column('reference_number', Float(precision=1), nullable=False)
     side = Column('side', String(3), nullable=True)
@@ -96,7 +97,7 @@ class SectionProperty(BaseICom, BaseCOG):
 
 class Material(BaseICom):
     __tablename__ = 'material_table'
-    name_id = Column(Integer, nullable=False, unique=True)
+    # name_id = Column(Integer, nullable=False, unique=True)
     density = Column(Float())
     eu = Column(Float(), nullable=False)
     nu = Column(Float(), nullable=False)
@@ -116,14 +117,14 @@ class Mass(BaseICom, BaseCOG):
 
 class NodeElement(Base):
     __tablename__ = 'NodeElement'
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    node = Column('node', Integer, ForeignKey('node.node_id'))
-    element = Column('element', Integer, ForeignKey('element.element_id'))
+    # id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    node = Column('node', Integer, ForeignKey('node.id', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
+    element = Column('element', Integer, ForeignKey('element.id', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
 
 
 class Node(BaseICom, BaseCOG):
     __tablename__ = 'node'
-    node_id = Column('node_id', Integer, nullable=False, unique=True)
+    # node_id = Column('node_id', Integer, nullable=False, unique=True)
     reference_type1 = Column('reference_type1', String(20), nullable=False)
     reference_number1 = Column('reference_number1', Float(precision=1), nullable=False)
     reference_side1 = Column('reference_side1', String(3), nullable=True)
@@ -136,22 +137,22 @@ class Node(BaseICom, BaseCOG):
     __table_args__ = (ForeignKeyConstraint(['reference_type2', 'reference_number2', 'reference_side2'],
                                            ['structure_table.struct_type', 'structure_table.number',
                                             'structure_table.side'], name='reference_2'), {})
-    elements = relationship('element', secondary=NodeElement.__table__, backref='node')
+    elements = relationship('Element', secondary=NodeElement.__table__, back_populates="nodes", lazy='selectin')
 
 
 class Element(BaseICom):
     __tablename__ = 'element'
-    element_id = Column('element_id', Integer, nullable=False, unique=True)
+    # element_id = Column('element_id', Integer, nullable=False, unique=True)
     element_type = Column('base_structure', String, ForeignKey('base_structure.name'), nullable=False) #foreign key to element type
-    nodes = relationship('node', secondary=NodeElement.__table__, backref='element')
-    property = Column('property', Integer, ForeignKey('property.property_id'))
+    nodes = relationship('Node', secondary=NodeElement.__table__, back_populates="elements", lazy='selectin')
+    property_id = Column('property', Integer, ForeignKey('property.id'))
     offset = Column(String)
 
 
-class Property(BaseICom, BaseCOG):
+class ElProperty(BaseICom, BaseCOG):
     """
     TODO: COG to be concidered, what point has to be used?
     """
     __tablename__ = 'property'
-    name_id = Column('property_id', Integer, nullable=False, unique=True)
-    cross_section = Column('cross-section', Integer, ForeignKey('section_property.name_id'))
+    # name_id = Column('property_id', Integer, nullable=False, unique=True)
+    cross_section = Column('cross-section', Integer, ForeignKey('section_property.id'))
