@@ -10,6 +10,8 @@ from sqlalchemy import (
     String,
     Integer,
     Float,
+    DateTime,
+    TIMESTAMP,
     Table,
     Computed,
     ForeignKey,
@@ -17,6 +19,7 @@ from sqlalchemy import (
     PrimaryKeyConstraint,
     func
 )
+# from sqlalchemy.sql import func
 from sqlalchemy.ext.hybrid import hybrid_property
 
 DATABASE = {
@@ -45,8 +48,11 @@ Session = sessionmaker(
 
 class BaseICom(Base):
     __abstract__ = True
-    id = Column(Integer, Identity(start=1, cycle=True), primary_key=True)
+    id = Column(Integer, Identity(start=1, cycle=True), unique=True, primary_key=True)
     comment = Column('comment', String())
+    time_created = Column(TIMESTAMP, nullable=False, server_default=func.now())
+    time_updated = Column(TIMESTAMP, onupdate=func.now())
+
 
 class BaseCOG(Base):
     __abstract__ = True
@@ -77,7 +83,6 @@ class Structure(BaseICom):
 
 class SectionProperty(BaseICom, BaseCOG):
     __tablename__ = 'section_property'
-    # name_id = Column('name_id', Integer, nullable=False, unique=True)
     reference_type = Column('reference_type', String(20), nullable=False)
     reference_number = Column('reference_number', Float(precision=1), nullable=False)
     side = Column('side', String(3), nullable=True)
@@ -96,15 +101,15 @@ class SectionProperty(BaseICom, BaseCOG):
 
 
 class Material(BaseICom):
-    __tablename__ = 'material_table'
-    # name_id = Column(Integer, nullable=False, unique=True)
+    __tablename__ = 'material'
     density = Column(Float())
     eu = Column(Float(), nullable=False)
     nu = Column(Float(), nullable=False)
+    properties = relationship("ElProperty", lazy="selectin")
 
 
 class Mass(BaseICom, BaseCOG):
-    __tablename__ = 'mass_table'
+    __tablename__ = 'mass'
     name = Column(String, nullable=False)
     weight = Column(Float())
     reference_type = Column('reference_type', String(20), nullable=False)
@@ -117,14 +122,12 @@ class Mass(BaseICom, BaseCOG):
 
 class NodeElement(Base):
     __tablename__ = 'NodeElement'
-    # id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     node = Column('node', Integer, ForeignKey('node.id', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
     element = Column('element', Integer, ForeignKey('element.id', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
 
 
 class Node(BaseICom, BaseCOG):
     __tablename__ = 'node'
-    # node_id = Column('node_id', Integer, nullable=False, unique=True)
     reference_type1 = Column('reference_type1', String(20), nullable=False)
     reference_number1 = Column('reference_number1', Float(precision=1), nullable=False)
     reference_side1 = Column('reference_side1', String(3), nullable=True)
@@ -142,17 +145,23 @@ class Node(BaseICom, BaseCOG):
 
 class Element(BaseICom):
     __tablename__ = 'element'
-    # element_id = Column('element_id', Integer, nullable=False, unique=True)
     element_type = Column('base_structure', String, ForeignKey('base_structure.name'), nullable=False) #foreign key to element type
     nodes = relationship('Node', secondary=NodeElement.__table__, back_populates="elements", lazy='selectin')
     property_id = Column('property', Integer, ForeignKey('property.id'))
     offset = Column(String)
+    node_start = Column('node_start', Integer, ForeignKey('node.id', ondelete="CASCADE", onupdate="CASCADE"))
+    node_end = Column('node_start', Integer, ForeignKey('node.id', ondelete="CASCADE", onupdate="CASCADE"))
+    property_start = Column('property_start', Integer, ForeignKey('property.id'))
+    property_end = Column('property_end', Integer, ForeignKey('property.id'))
 
 
-class ElProperty(BaseICom, BaseCOG):
+class ElProperty(BaseICom):
     """
     TODO: COG to be concidered, what point has to be used?
     """
     __tablename__ = 'property'
-    # name_id = Column('property_id', Integer, nullable=False, unique=True)
-    cross_section = Column('cross-section', Integer, ForeignKey('section_property.id'))
+    cross_section = Column('cross-section_start', Integer, ForeignKey('section_property.id'))
+    shell_thick = Column('shell_thick', Float)
+    material_id = Column('material', Integer, ForeignKey('material.id'))
+    material = relationship("Material", lazy='selectin')
+    section = relationship("SectionProperty", lazy='selectin')

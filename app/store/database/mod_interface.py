@@ -28,12 +28,12 @@ class BaseSchema(Schema):
         return self.__model__(**data)
 
 
-class BaseSchema_add(BaseSchema):
+class BaseSchemaAdd(BaseSchema):
     comment = fields.Str()
     id = fields.Integer()
-# class BaseSchema_add1(Schema):
-#     comment = fields.Str()
-#     id = fields.Integer()
+    time_created = fields.DateTime('%Y-%m-%d  %H:%M:%S')
+    time_updated = fields.DateTime('%Y-%m-%d  %H:%M:%S')
+
 
 class BaseCOG(Schema):
     cog_x = fields.Float()
@@ -46,34 +46,36 @@ class BaseStructureSchema(BaseSchema):
     name = fields.Str()
 
 
-class StructureSchema(BaseSchema_add):
+class StructureSchema(BaseSchemaAdd):
     __model__ = models.Structure
     struct_type = fields.Str()
     number = fields.Float()
     side = fields.Str()
 
 
-class SectionPropertySchema(BaseSchema_add, BaseCOG):
+class SectionPropertySchema(BaseSchemaAdd, BaseCOG):
     __model__ = models.SectionProperty
-    name = fields.Str()
+    id = fields.Str()
     area = fields.Float()
     inertia_xx = fields.Float()
     inertia_yy = fields.Float()
     inertia_zz = fields.Float()
     reference_type = fields.Str()
     reference_number = fields.Float()
+    side = fields.Str()
+    position_type = fields.Str()
+    position_number = fields.Float()
+    position_side = fields.Str()
 
-
-class MaterialSchema(BaseSchema_add):
+class MaterialSchema(BaseSchemaAdd):
     __model__ = models.Material
     density = fields.Float()
     eu = fields.Float()
     nu = fields.Float()
-    reference_type = fields.Str()
-    reference_number = fields.Float()
+    properties = fields.List(fields.Nested("ElPropertySchema", exclude=("material",)))
 
 
-class MassSchema(BaseSchema_add, BaseCOG):
+class MassSchema(BaseSchemaAdd, BaseCOG):
     __model__ = models.Mass
     name = fields.Str()
     reference_type = fields.Str()
@@ -82,7 +84,7 @@ class MassSchema(BaseSchema_add, BaseCOG):
 
 
 # class NodeSchema(BaseSchema_add1, BaseCOG):
-class NodeSchema(BaseSchema_add, BaseCOG):
+class NodeSchema(BaseSchemaAdd, BaseCOG):
     __model__ = models.Node
     reference_type1 = fields.Str()
     reference_number1 = fields.Float()
@@ -94,12 +96,16 @@ class NodeSchema(BaseSchema_add, BaseCOG):
 
 
 # class ElementSchema(BaseSchema_add1):
-class ElementSchema(BaseSchema_add):
+class ElementSchema(BaseSchemaAdd):
     __model__ = models.Element
     element_type = fields.Str()
     nodes = fields.List(fields.Nested(lambda: NodeSchema(only=("id",))))
     property_id = fields.Integer()
     offset = fields.Str()
+    # node_start = fields.Integer()
+    # node_end = fields.Integer()
+    property_start = fields.Integer()
+    property_end = fields.Integer()
 
 
 # class NodeElementSchema(Schema):
@@ -107,5 +113,12 @@ class NodeElementSchema(BaseSchema):
     __model__ = models.NodeElement
     node = fields.Integer()
     element = fields.Integer()
-#     node = fields.Nested("NodeSchema", only=("id",))
-#     element = fields.Nested("ElementSchema", only=("id",))
+
+
+class ElPropertySchema(BaseSchemaAdd):
+    __model__ = models.ElProperty
+    cross_section = fields.Integer()
+    shell_thick = fields.Float()
+    material_id = fields.Integer()
+    material = fields.Nested(MaterialSchema(exclude=("properties",)))
+    section = fields.Nested(SectionPropertySchema)

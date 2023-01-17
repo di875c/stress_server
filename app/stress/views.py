@@ -8,7 +8,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import aliased
 import json
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import update, bindparam
+from sqlalchemy import update, bindparam, delete
 
 CHECK_OPERATOR = {
     '<': lambda x, y: x < y,
@@ -93,19 +93,19 @@ class DbView(web.View):
         try:
             # print(data)
             class_name = self.request.rel_url.query['table_name']
-            print(class_name)
+            # print(class_name)
             async with Session() as session:
                 async with session.begin():
                     data = await self.request.json()
-                    print(type(data), data)
+                    # print(type(data), data)
                     if 'parameter' in data.keys():
                         schema = globals()[class_name]()
-                        print('ja tut', schema)
+                        # print('ja tut', schema)
                         model_object = schema.load(data)
                         session.add(model_object)
                     elif 'parameters' in data.keys():
                         schema = globals()[class_name](many=True)
-                        print(schema)
+                        # print(schema)
                         model_objects = schema.load(data)
                         # print(model_objects)
                         session.add_all(model_objects)
@@ -133,12 +133,12 @@ class DbView(web.View):
         try:
             # print(data)
             class_name = self.request.rel_url.query['table_name']
-            print(class_name)
+            # print(class_name)
             async with Session() as session:
                 async with session.begin():
                     data = await self.request.json()
                     model = globals()[class_name.replace('Schema', '')]
-                    print(type(data), data)
+                    # print(type(data), data)
                     if 'parameters' in data.keys():
                         stmt = (update(model).where(model.id == bindparam("uid")).values(
                             {name: bindparam(name) for name in data['parameters'][0].keys() if name != "uid"})
@@ -146,7 +146,40 @@ class DbView(web.View):
                         result = await session.execute(stmt, data['parameters'])
                     else:
                         return web.Response(body=b"Wrong format no parameter or parameters in json")
-            return web.Response(body="Successfully updated {}".format(result))
+            return web.Response(body="Successfully updated {}".format(result.rowcount))
+        except SQLAlchemyError as e:
+            error = str(e.__dict__['orig'])
+            return web.Response(body="SQL error appears\n {}".format(error))
+        except ValidationError as e:
+            error = str(e.messages)
+            return web.Response(body="Validation error appears\n {}".format(error))
+
+    async def delete(self):
+        """
+                parameters are taken from json post request except table_name. It is taken from url
+                :param request: db?table_name=NodeSchema
+                json = {{"parameters":
+                     [
+        {"uid": 16405200.0},
+        {"uid": 16404200.0},
+                      ]}
+                :return: delete objects from database, accept or mistake as response
+                """
+        try:
+            data = dict(self.request.rel_url.query)
+            class_name = data['table_name']
+            # print(data)
+            async with Session() as session:
+                async with session.begin():
+                    data = await self.request.json()
+                    model = globals()[class_name.replace('Schema', '')]
+                    # print(type(data), data)
+                    if 'parameters' in data.keys():
+                        stmt = (delete(model).where(model.id == bindparam("uid")))
+                        result = await session.execute(stmt, data['parameters'])
+                    else:
+                        return web.Response(body=b"Wrong format no parameter or parameters in json")
+            return web.Response(body="Successfully updated {}".format(result.supports_sane_multi_rowcount))
         except SQLAlchemyError as e:
             error = str(e.__dict__['orig'])
             return web.Response(body="SQL error appears\n {}".format(error))
