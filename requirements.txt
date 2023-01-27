@@ -12,6 +12,7 @@ SQLAlchemy==1.4.43
 asyncpg
 alembic
 marshmallow
+marshmallow-sqlalchemy
 
 #python
 pytz

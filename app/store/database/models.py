@@ -46,6 +46,7 @@ Session = sessionmaker(
 #     Column("mass_table", ForeignKey("mass_table.id")),
 # )
 
+
 class BaseICom(Base):
     __abstract__ = True
     id = Column(Integer, Identity(start=1, cycle=True), unique=True, primary_key=True)

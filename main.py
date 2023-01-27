@@ -14,7 +14,7 @@ from app.settings import BASE_DIR
 
 def setup_config(application):
    application['config'] = os.environ.get
-   #print(application['config'])
+
 
 def setup_external_libraries(application):
    aiohttp_jinja2.setup(
