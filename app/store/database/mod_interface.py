@@ -2,6 +2,23 @@ from marshmallow import Schema, fields, post_load, pre_load, post_dump, Validati
 from app.store.database import models
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 
+REFERENCE_LST = ('id', 'frame', 'stringer', 'side')
+
+
+class CustomList(fields.List):
+    def _deserialize(self, value, attr, data, **kwargs) -> list:
+        if len(super()._deserialize(value, attr, data, **kwargs)) == 0:
+            return None
+        else:
+            return super()._deserialize(value, attr, data, **kwargs)
+
+    def _serialize(self, value, attr, data, **kwargs) -> list:
+        if len(super()._serialize(value, attr, data, **kwargs)) == 0:
+            return None
+        else:
+            return super()._serialize(value, attr, data, **kwargs)
+
+
 class BaseSchema(SQLAlchemyAutoSchema):
     # Custom options
     __envelope__ = {'single': 'parameter', 'many': 'parameters'}
@@ -124,6 +141,10 @@ class MaterialSchema(BaseSchema):
 class NodeSchema(BaseSchema):
     class Meta:
         model = models.Node
+        include_fk = True
+        load_instance = False
+        include_relationships = True
+        ordered = True
     # reference_type1 = fields.Str()
     # reference_number1 = fields.Float()
     # reference_side1 = fields.Str()
@@ -137,12 +158,17 @@ class NodeSchema(BaseSchema):
 class ElementSchema(BaseSchema):
     class Meta:
         model = models.Element
+        include_fk = True
+        load_instance = False
+        include_relationships = True
+        ordered = True
     # element_type = fields.Str()
-    nodes = fields.List(fields.Nested(lambda: NodeSchema(only=("id",))))
+    nodes = CustomList(fields.Nested(lambda: NodeSchema(only=REFERENCE_LST)), allow_none=True)
     # property_id = fields.Integer()
     # offset = fields.Str()
-    # # node_start = fields.Integer()
-    # # node_end = fields.Integer()
+    # node_start = fields.Nested("NodeSchema", only=REFERENCE_LST)
+    position = fields.Nested("NodeSchema", only=REFERENCE_LST[1:])
+    # node_end = fields.Integer()
     # property_start = fields.Integer()
     # property_end = fields.Integer()
 
@@ -157,6 +183,7 @@ class ElementSchema(BaseSchema):
 class ElPropertySchema(BaseSchema):
     class Meta:
         model = models.ElProperty
+
     # cross_section = fields.Integer()
     # shell_thick = fields.Float()
     # material_id = fields.Integer()

@@ -3,7 +3,7 @@ from sqlalchemy.engine.url import URL
 from sqlalchemy.ext.declarative import declarative_base
 import os
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import sessionmaker, relationship, declarative_mixin, declared_attr
 from sqlalchemy import (
     Column,
     Identity,
@@ -39,12 +39,6 @@ Base = declarative_base()
 Session = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
-# association_table = Table(
-#     "association_table",
-#     Base.metadata,
-#     Column("structure_table", ForeignKey("structure_table.id")),
-#     Column("mass_table", ForeignKey("mass_table.id")),
-# )
 
 
 class BaseICom(Base):
@@ -54,21 +48,44 @@ class BaseICom(Base):
     time_created = Column(TIMESTAMP, nullable=False, server_default=func.now())
     time_updated = Column(TIMESTAMP, onupdate=func.now())
 
-
-class BaseCOG(Base):
+@declarative_mixin
+class XYZMixin:
     __abstract__ = True
     cog_x = Column(Float(), nullable=False)
     cog_y = Column(Float(), nullable=False)
     cog_z = Column(Float(), nullable=False)
 
+@declarative_mixin
+class ReferenceMixin:
+    __abstract__ = True
+    @declared_attr
+    def frame(cls):
+        return Column('frame', Float(precision=1), ForeignKey('frame.number', ondelete="CASCADE",
+                                                           onupdate="CASCADE"), nullable=False)
+    stringer = Column('stringer', Float(precision=1), nullable=False)
+    side = Column('side', String(3), nullable=False)
+    @declared_attr
+    def __table_args__(cls):
+        return (ForeignKeyConstraint(['stringer', 'side'], ['stringer.number', 'stringer.side'],
+                                           name='stringer_reference'), {})
+
+
 class BaseStructure(Base):
     __tablename__ = 'base_structure'
     name = Column('name', String(20), unique=True, nullable=False, primary_key=True)
 
-#
-# class ElementType(BaseStructure):
-#     __tablename__ = 'element_type'
-    # name = Column('name', String(20), unique=True, nullable=False, primary_key=True)
+
+class Frame(BaseICom):
+    __tablename__ = 'frame'
+    number = Column('number',  Float(precision=1), unique=True, nullable=False, primary_key=True)
+
+
+class Stringer(BaseICom):
+    __tablename__ = 'stringer'
+    number = Column('number', Float(precision=1), nullable=False)
+    side = Column('side', String(3), nullable=False)
+    reference = PrimaryKeyConstraint(number, side, name='stringer_reference')
+
 
 class Structure(BaseICom):
     __tablename__ = 'structure_table'
@@ -82,19 +99,20 @@ class Structure(BaseICom):
     #     return self.struct_type + self.number
 
 
-class SectionProperty(BaseICom, BaseCOG):
+class SectionProperty(BaseICom, XYZMixin, ReferenceMixin):
     __tablename__ = 'section_property'
-    reference_type = Column('reference_type', String(20), nullable=False)
-    reference_number = Column('reference_number', Float(precision=1), nullable=False)
-    side = Column('side', String(3), nullable=True)
-    __table_args__ = (ForeignKeyConstraint(['reference_type', 'reference_number', 'side'],
-        ['structure_table.struct_type', 'structure_table.number', 'structure_table.side'], name='reference'), {})
-    position_type = Column('position_type', String(20), nullable=False)
-    position_number = Column('position_number', Float(precision=1), nullable=False)
-    position_side = Column('position_side', String(3), nullable=True)
-    __table_args__ = (ForeignKeyConstraint(['position_type', 'position_number', 'position_side'],
-                                           ['structure_table.struct_type', 'structure_table.number', 'structure_table.side'],
-                                           name='position'), {})
+    # reference_type = Column('reference_type', String(20), nullable=False)
+    # reference_number = Column('reference_number', Float(precision=1), nullable=False)
+    # side = Column('side', String(3), nullable=True)
+    # __table_args__ = (ForeignKeyConstraint(['reference_type', 'reference_number', 'side'],
+    #     ['structure_table.struct_type', 'structure_table.number', 'structure_table.side'], name='reference'), {})
+    # position_type = Column('position_type', String(20), nullable=False)
+    # position_number = Column('position_number', Float(precision=1), nullable=False)
+    # position_side = Column('position_side', String(3), nullable=True)
+    # __table_args__ = (ForeignKeyConstraint(['position_type', 'position_number', 'position_side'],
+    #                                        ['structure_table.struct_type', 'structure_table.number', 'structure_table.side'],
+    #                                        name='position'), {})
+    type = Column('type', String(), ForeignKey('base_structure.name'))
     area = Column(Float())
     inertia_xx = Column(Float())
     inertia_yy = Column(Float())
@@ -109,16 +127,16 @@ class Material(BaseICom):
     properties = relationship("ElProperty", lazy="selectin")
 
 
-class Mass(BaseICom, BaseCOG):
+class Mass(BaseICom, XYZMixin, ReferenceMixin):
     __tablename__ = 'mass'
     name = Column(String, nullable=False)
     weight = Column(Float())
-    reference_type = Column('reference_type', String(20), nullable=False)
-    reference_number = Column('reference_number', Float(precision=1), nullable=False)
-    side = Column('side', String(3), nullable=True)
-    __table_args__ = (ForeignKeyConstraint(['reference_type', 'reference_number', 'side'],
-                                           ['structure_table.struct_type', 'structure_table.number',
-                                            'structure_table.side'], name='reference'), {})
+    # reference_type = Column('reference_type', String(20), nullable=False)
+    # reference_number = Column('reference_number', Float(precision=1), nullable=False)
+    # side = Column('side', String(3), nullable=True)
+    # __table_args__ = (ForeignKeyConstraint(['reference_type', 'reference_number', 'side'],
+    #                                        ['structure_table.struct_type', 'structure_table.number',
+    #                                         'structure_table.side'], name='reference'), {})
 
 
 class NodeElement(Base):
@@ -127,20 +145,26 @@ class NodeElement(Base):
     element = Column('element', Integer, ForeignKey('element.id', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
 
 
-class Node(BaseICom, BaseCOG):
+class Node(BaseICom, XYZMixin, ReferenceMixin):
     __tablename__ = 'node'
-    reference_type1 = Column('reference_type1', String(20), nullable=False)
-    reference_number1 = Column('reference_number1', Float(precision=1), nullable=False)
-    reference_side1 = Column('reference_side1', String(3), nullable=True)
-    __table_args__ = (ForeignKeyConstraint(['reference_type1', 'reference_number1', 'reference_side1'],
-                                           ['structure_table.struct_type', 'structure_table.number',
-                                            'structure_table.side'], name='reference_1'), {})
-    reference_type2 = Column('reference_type2', String(20), nullable=False)
-    reference_number2 = Column('reference_number2', Float(precision=1), nullable=False)
-    reference_side2 = Column('reference_side2', String(3), nullable=True)
-    __table_args__ = (ForeignKeyConstraint(['reference_type2', 'reference_number2', 'reference_side2'],
-                                           ['structure_table.struct_type', 'structure_table.number',
-                                            'structure_table.side'], name='reference_2'), {})
+    # reference_type1 = Column('reference_type1', String(20), nullable=False)
+    # reference_number1 = Column('reference_number1', Float(precision=1), nullable=False)
+    # reference_side1 = Column('reference_side1', String(3), nullable=True)
+    # __table_args__ = (ForeignKeyConstraint(['reference_type1', 'reference_number1', 'reference_side1'],
+    #                                        ['structure_table.struct_type', 'structure_table.number',
+    #                                         'structure_table.side'], name='reference_1'), {})
+    # reference_type2 = Column('reference_type2', String(20), nullable=False)
+    # reference_number2 = Column('reference_number2', Float(precision=1), nullable=False)
+    # reference_side2 = Column('reference_side2', String(3), nullable=True)
+    # __table_args__ = (ForeignKeyConstraint(['reference_type2', 'reference_number2', 'reference_side2'],
+    #                                        ['structure_table.struct_type', 'structure_table.number',
+    #                                         'structure_table.side'], name='reference_2'), {})
+    # frame = Column('frame', Float(precision=1), ForeignKey('frame.number', ondelete="CASCADE",
+    #                                                               onupdate="CASCADE"), nullable=False)
+    # stringer = Column('stringer', Float(precision=1), nullable=False)
+    # side = Column('side', String(3), nullable=False)
+    # __table_args__ = (ForeignKeyConstraint(['stringer', 'side'], ['stringer.number', 'stringer.side'],
+    #                                        name='stringer_reference'), {})
     elements = relationship('Element', secondary=NodeElement.__table__, back_populates="nodes", lazy='selectin')
 
 
@@ -151,9 +175,10 @@ class Element(BaseICom):
     property_id = Column('property', Integer, ForeignKey('property.id'))
     offset = Column(String)
     node_start = Column('node_start', Integer, ForeignKey('node.id', ondelete="CASCADE", onupdate="CASCADE"))
-    node_end = Column('node_start', Integer, ForeignKey('node.id', ondelete="CASCADE", onupdate="CASCADE"))
+    node_end = Column('node_end', Integer, ForeignKey('node.id', ondelete="CASCADE", onupdate="CASCADE"))
     property_start = Column('property_start', Integer, ForeignKey('property.id'))
     property_end = Column('property_end', Integer, ForeignKey('property.id'))
+    position = relationship('Node', back_populates="elements", lazy='selectin', uselist=False, foreign_keys=[node_start])
 
 
 class ElProperty(BaseICom):
@@ -161,7 +186,7 @@ class ElProperty(BaseICom):
     TODO: COG to be concidered, what point has to be used?
     """
     __tablename__ = 'property'
-    cross_section = Column('cross-section_start', Integer, ForeignKey('section_property.id'))
+    cross_section = Column('cross_section', Integer, ForeignKey('section_property.id'))
     shell_thick = Column('shell_thick', Float)
     material_id = Column('material', Integer, ForeignKey('material.id'))
     material = relationship("Material", lazy='selectin')

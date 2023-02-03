@@ -6,7 +6,7 @@ from app.store.database.mod_interface import *
 from aiohttp import web
 from sqlalchemy.future import select
 from sqlalchemy.orm import aliased
-import json
+import json, sys
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import update, bindparam, delete
 
@@ -78,7 +78,7 @@ class DbView(web.View):
             async with session.begin():
                 model = globals()[class_name.replace('Schema', '')]
                 # schema = globals()[class_name]()
-                schema = model_schema_factory(model)()
+                schema = model_schema_factory(model)() if model != Element else ElementSchema()
                 print(schema)
                 for _key, _val in data.items():
                     if _key != 'table_name':
@@ -97,7 +97,7 @@ class DbView(web.View):
                     #   data.items()]))
                 # deserialize data to dict format
                 out_data = schema.dump(model_objects.scalars(), many=True)
-                # print(out_data)
+                print('size of json attached: ', sys.getsizeof(out_data))
         return web.Response(body=json.dumps(out_data))
 
     @error_function
@@ -126,12 +126,12 @@ class DbView(web.View):
                     # schema = globals()[class_name](many=True)
                     model = globals()[class_name.replace('Schema', '')]
                     schema = model_schema_factory(model)(many=True)
-                    print(schema, data)
+                    print(schema, model)# data)
                     model_objects = schema.load(data)
                     # print(model_objects)
                     session.add_all(model_objects)
                 else:
-                    return web.Response(body=b"Wrong format no parameter or parameters in json")
+                    return web.Response(status=422, body=b"Wrong format no parameter or parameters in json")
         return web.Response(body=b"Successfully added to DB")
 
     @error_function
