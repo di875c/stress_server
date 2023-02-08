@@ -16,7 +16,40 @@ CHECK_OPERATOR = {
     '==': lambda x, y: x == y,
     '=<': lambda x, y: x <= y,
     '=>': lambda x, y: x >= y,
+    'between': lambda x, y: (y[0] <= x, x <= y[1]),
 }
+
+
+def recur_unpack(lst: list, return_lst=[]) -> list:
+    # prepare list with unpacked internal lists [[1,2,3],4,[[5,6],7]] --> [1,2,3,4,5,6,7]
+    for _val in lst:
+        if type(_val) == list or type(_val) == tuple:
+            return_lst = recur_unpack(_val, return_lst)
+        else:
+            return_lst.append(_val)
+    return return_lst
+
+
+def prepare_criteria_from_html(data: dict) -> tuple:
+    # take dict from request.parameters and preparing list of condition for orm request to DB
+    class_name = data['table_name']
+    modify_data, modify_sign, modify_hard_data, modify_hard_sign = {}, {}, {}, {}
+    model = globals()[class_name.replace('Schema', '')]
+    schema = globals()[class_name]() if class_name in globals() else model_schema_factory(model)()
+    for _key, _val in data.items():
+        if _key != 'table_name':
+            _sign, *_value = _val.split()
+            if _sign.lower() == 'between':
+                modify_hard_data[_key] = [schema.dump({_key: _x})['parameter'][_key] for _x in _value]
+                modify_sign[_key] = _sign.lower()
+            else:
+                modify_data[_key] = _value[0]
+                modify_sign[_key] = _sign
+    data = schema.dump(modify_data)  # serialize data to model format
+    data['parameter'].update(modify_hard_data)
+    print(data, modify_sign)
+    return (recur_unpack([CHECK_OPERATOR[modify_sign[_key]](getattr(model, _key), _val) for _key, _val in
+                          data['parameter'].items()], []), model, schema)
 
 @aiohttp_jinja2.template("index.html")
 async def index(request):
@@ -24,6 +57,7 @@ async def index(request):
 
 
 def error_function(func):
+    # error wrapper, send response with error information.
     async def _wrapper(*args, **kwargs):
         try:
             result = await func(*args, **kwargs)
@@ -36,6 +70,8 @@ def error_function(func):
         except ConnectionRefusedError as e:
             error = str(e.strerror)
             return web.Response(status=502, body="Connection to BD error appears\n {}".format(error))
+        except Exception as error:
+            return web.Response(body='some new error. {}'.format(error), status=422)
         return result
     return _wrapper
 
@@ -71,26 +107,10 @@ class DbView(web.View):
         :return: json with lines from table according to request
         """
         data = dict(self.request.rel_url.query)
-        class_name = data['table_name']
-        # print(data)
-        modify_data, modify_sign = {}, {}
         async with Session() as session:
             async with session.begin():
-                model = globals()[class_name.replace('Schema', '')]
-                # schema = globals()[class_name]()
-                schema = model_schema_factory(model)() if model != Element else ElementSchema()
-                print(schema)
-                for _key, _val in data.items():
-                    if _key != 'table_name':
-                        _sign, _value = _val.split()
-                        modify_data[_key] = _value
-                        modify_sign[_key] = _sign
-                data = schema.dump(modify_data) #serialize data to model format
-                # using CHECK_OPERATOR as dict with lambda function as comparisson opearator
-                # if class_name != "ElementSchema" and class_name != "NodeSchema":
-                model_objects = await session.execute(select(model).where(
-                    *[CHECK_OPERATOR[modify_sign[_key]](getattr(model, _key), _val) for _key, _val in
-                    data['parameter'].items()]))
+                criteria_list, model, schema = prepare_criteria_from_html(data)
+                model_objects = await session.execute(select(model).where(*criteria_list))
                 # else:
                     # model_objects = await session.execute(select(model).where(
                     # *[CHECK_OPERATOR[modify_sign[_key]](getattr(model, _key), _val) for _key, _val in
@@ -118,8 +138,7 @@ class DbView(web.View):
                 if 'parameter' in data.keys():
                     model = globals()[class_name.replace('Schema', '')]
                     # schema = globals()[class_name]()
-                    schema = model_schema_factory(model)()
-                    # print('ja tut', schema)
+                    schema = globals()[class_name]() if class_name in globals() else model_schema_factory(model)()                    # print('ja tut', schema)
                     model_object = schema.load(data)
                     session.add(model_object)
                 elif 'parameters' in data.keys():
@@ -129,7 +148,7 @@ class DbView(web.View):
                     print(schema, model)# data)
                     model_objects = schema.load(data)
                     # print(model_objects)
-                    session.add_all(model_objects)
+                    result = session.add_all(model_objects)
                 else:
                     return web.Response(status=422, body=b"Wrong format no parameter or parameters in json")
         return web.Response(body=b"Successfully added to DB")
@@ -154,21 +173,18 @@ class DbView(web.View):
             async with session.begin():
                 data = await self.request.json()
                 model = globals()[class_name.replace('Schema', '')]
+                schema = globals()[class_name](many=True, only=('uid',)) if class_name in globals() else \
+                    model_schema_factory(model)(many=True, only=('uid',))
+                ser_data = schema.dump(data['parameters'])
                 # print(type(data), data)
                 if 'parameters' in data.keys():
                     stmt = (update(model).where(model.id == bindparam("uid")).values(
-                        {name: bindparam(name) for name in data['parameters'][0].keys() if name != "uid"})
+                        {name: bindparam(name) for name in ser_data['parameters'][0].keys() if name != "uid"})
                     )
                     result = await session.execute(stmt, data['parameters'])
                 else:
                     return web.Response(body=b"Wrong format no parameter or parameters in json")
         return web.Response(body="Successfully updated {}".format(result.rowcount))
-        # except SQLAlchemyError as e:
-        #     error = str(e.__dict__['orig'])
-        #     return web.Response(body="SQL error appears\n {}".format(error))
-        # except ValidationError as e:
-        #     error = str(e.messages)
-        #     return web.Response(body="Validation error appears\n {}".format(error))
 
     @error_function
     async def delete(self):
@@ -188,18 +204,24 @@ class DbView(web.View):
         # print(data)
         async with Session() as session:
             async with session.begin():
-                data = await self.request.json()
                 model = globals()[class_name.replace('Schema', '')]
-                # print(type(data), data)
-                if 'parameters' in data.keys():
-                    stmt = (delete(model).where(model.id == bindparam("uid")))
-                    result = await session.execute(stmt, data['parameters'])
+                if 'Content-Type' in  self.request.headers and self.request.headers['Content-Type'] == 'application/json':
+                    # If delete method with excel using. Only uid index is taken into account.
+                    schema = globals()[class_name](many=True, only=('uid',)) if class_name in globals() \
+                        else model_schema_factory(model)(many=True, only=('uid',))
+                    data = await self.request.json()
+                    ser_data = schema.dump(data['parameters'])
+                    # print(ser_data)
+                    if 'parameters' in data.keys():
+                        stmt = (delete(model).where(model.uid == bindparam("uid")).returning(model.uid))
+                        # query = await session.execute(select(model.uid).where(*[model.uid == _data['uid'] for _data in ser_data['parameters']]))
+                        result = await session.execute(stmt, ser_data['parameters'])
+                        # print(query.scalar())
+                    else:
+                        return web.Response(body=b"Wrong format no parameter or parameters in json")
                 else:
-                    return web.Response(body=b"Wrong format no parameter or parameters in json")
-        return web.Response(body="Successfully updated {}".format(result.supports_sane_multi_rowcount))
-        # except SQLAlchemyError as e:
-        #     error = str(e.__dict__['orig'])
-        #     return web.Response(body="SQL error appears\n {}".format(error))
-        # except ValidationError as e:
-        #     error = str(e.messages)
-        #     return web.Response(body="Validation error appears\n {}".format(error))
+                    # Parameters are from web interface. Selection with get principle.
+                    criteria_list, model, schema = prepare_criteria_from_html(data)
+                    result = await session.execute(delete(model).where(*criteria_list))
+        return web.Response(body="Successfully deleted {}".format(result.supports_sane_multi_rowcount()))
+

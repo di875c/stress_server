@@ -2,10 +2,11 @@ from marshmallow import Schema, fields, post_load, pre_load, post_dump, Validati
 from app.store.database import models
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 
-REFERENCE_LST = ('id', 'frame', 'stringer', 'side')
+REFERENCE_LST = ('uid', 'frame', 'stringer', 'side')
 
 
 class CustomList(fields.List):
+#To update serialize methods to return None instead []
     def _deserialize(self, value, attr, data, **kwargs) -> list:
         if len(super()._deserialize(value, attr, data, **kwargs)) == 0:
             return None
@@ -75,14 +76,7 @@ def model_schema_factory(bd_model):
 # class BaseSchemaAdd(BaseSchema):
 #     class Meta:
 #         ordered = True
-#
-#
-# class BaseCOG(Schema):
-#     cog_x = fields.Float()
-#     cog_y = fields.Float()
-#     cog_z = fields.Float()
-#
-#
+
 # class BaseStructureSchema(BaseSchema):
 #     # __model__ = models.BaseStructure
 #     class Meta:
@@ -100,44 +94,14 @@ def model_schema_factory(bd_model):
 #         include_fk = True
 #         load_instance = False
 #         include_relationships = True
-#
-# # class SectionPropertySchema(BaseSchemaAdd, BaseCOG):
-# class SectionPropertySchema(BaseSchema):
-#     # __model__ = models.SectionProperty
-#     # id = fields.Str()
-#     # area = fields.Float()
-#     # inertia_xx = fields.Float()
-#     # inertia_yy = fields.Float()
-#     # inertia_zz = fields.Float()
-#     # reference_type = fields.Str()
-#     # reference_number = fields.Float()
-#     # side = fields.Str()
-#     # position_type = fields.Str()
-#     # position_number = fields.Float()
-#     # position_side = fields.Str()
-#     class Meta:
-#         model = models.SectionProperty
-#         include_fk = True
-#         load_instance = False
+
 
 class MaterialSchema(BaseSchema):
     class Meta:
         model = models.Material
-    # density = fields.Float()
-    # eu = fields.Float()
-    # nu = fields.Float()
     properties = fields.List(fields.Nested("ElPropertySchema", exclude=("material",)))
 
-#
-# class MassSchema(BaseSchemaAdd, BaseCOG):
-#     __model__ = models.Mass
-#     name = fields.Str()
-#     reference_type = fields.Str()
-#     reference_number = fields.Float()
-#     weight = fields.Float()
 
-
-# class NodeSchema(BaseSchema_add1, BaseCOG):
 class NodeSchema(BaseSchema):
     class Meta:
         model = models.Node
@@ -145,16 +109,9 @@ class NodeSchema(BaseSchema):
         load_instance = False
         include_relationships = True
         ordered = True
-    # reference_type1 = fields.Str()
-    # reference_number1 = fields.Float()
-    # reference_side1 = fields.Str()
-    # reference_type2 = fields.Str()
-    # reference_number2 = fields.Float()
-    # reference_side2 = fields.Str()
-    elements = fields.List(fields.Nested("ElementSchema", only=("id",)))
+    elements = CustomList(fields.Nested("ElementSchema", only=("uid",)))
 
 
-# class ElementSchema(BaseSchema_add1):
 class ElementSchema(BaseSchema):
     class Meta:
         model = models.Element
@@ -162,15 +119,9 @@ class ElementSchema(BaseSchema):
         load_instance = False
         include_relationships = True
         ordered = True
-    # element_type = fields.Str()
-    nodes = CustomList(fields.Nested(lambda: NodeSchema(only=REFERENCE_LST)), allow_none=True)
-    # property_id = fields.Integer()
-    # offset = fields.Str()
-    # node_start = fields.Nested("NodeSchema", only=REFERENCE_LST)
+    nodes = CustomList(fields.Nested(lambda: NodeSchema(only=REFERENCE_LST)))
     position = fields.Nested("NodeSchema", only=REFERENCE_LST[1:])
-    # node_end = fields.Integer()
-    # property_start = fields.Integer()
-    # property_end = fields.Integer()
+
 
 
 # class NodeElementSchema(Schema):
@@ -183,9 +134,5 @@ class ElementSchema(BaseSchema):
 class ElPropertySchema(BaseSchema):
     class Meta:
         model = models.ElProperty
-
-    # cross_section = fields.Integer()
-    # shell_thick = fields.Float()
-    # material_id = fields.Integer()
     material = fields.Nested(MaterialSchema(exclude=("properties",)))
     section = fields.Nested('SectionPropertySchema')
