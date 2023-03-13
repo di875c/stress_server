@@ -62,44 +62,10 @@ def model_schema_factory(bd_model):
     return ModelSchema
 
 
-
-
-# class BaseSchemaAdd(BaseSchema):
+# class MaterialSchema(BaseSchema):
 #     class Meta:
-#         ordered = True
-#
-#     id = fields.Integer()
-#     time_created = fields.DateTime('%Y-%m-%d  %H:%M:%S')
-#     time_updated = fields.DateTime('%Y-%m-%d  %H:%M:%S')
-#     comment = fields.Str()
-#
-# class BaseSchemaAdd(BaseSchema):
-#     class Meta:
-#         ordered = True
-
-# class BaseStructureSchema(BaseSchema):
-#     # __model__ = models.BaseStructure
-#     class Meta:
-#         model = models.BaseStructure
-#         include_relationships = True
-#
-#
-# class StructureSchema(BaseSchema):
-#     # __model__ = models.Structure
-#     # struct_type = fields.Str()
-#     # number = fields.Float()
-#     # side = fields.Str()
-#     class Meta:
-#         model = models.Structure
-#         include_fk = True
-#         load_instance = False
-#         include_relationships = True
-
-
-class MaterialSchema(BaseSchema):
-    class Meta:
-        model = models.Material
-    properties = fields.List(fields.Nested("ElPropertySchema", exclude=("material",)))
+#         model = models.Material
+#     properties = fields.List(fields.Nested("ElPropertySchema", only=("uid",)))
 
 
 class NodeSchema(BaseSchema):
@@ -109,7 +75,7 @@ class NodeSchema(BaseSchema):
         load_instance = False
         include_relationships = True
         ordered = True
-    elements = CustomList(fields.Nested("ElementSchema", only=("uid",)))
+    # elements = CustomList(fields.Nested("ElementSchema", only=("uid",)))
 
 
 class ElementSchema(BaseSchema):
@@ -119,8 +85,10 @@ class ElementSchema(BaseSchema):
         load_instance = False
         include_relationships = True
         ordered = True
-    nodes = CustomList(fields.Nested(lambda: NodeSchema(only=REFERENCE_LST)))
+    # nodes = CustomList(fields.Nested(lambda: NodeSchema(only=REFERENCE_LST)))
     position = fields.Nested("NodeSchema", only=REFERENCE_LST[1:])
+    offset_1 = fields.String()
+    offset_2 = fields.String()
 
 
 
@@ -134,5 +102,11 @@ class ElementSchema(BaseSchema):
 class ElPropertySchema(BaseSchema):
     class Meta:
         model = models.ElProperty
-    material = fields.Nested(MaterialSchema(exclude=("properties",)))
-    section = fields.Nested('SectionPropertySchema')
+        include_fk = True
+        load_instance = False
+        include_relationships = True
+        ordered = True
+    material = fields.Nested(model_schema_factory(models.Material), only=("uid",))
+    property_start = fields.Nested(model_schema_factory(models.SectionProperty), only=['area', 'inertia_xx', 'inertia_yy', 'inertia_xy', 'inertia_torsion'])
+    property_end = fields.Nested(model_schema_factory(models.SectionProperty), only=['area', 'inertia_xx', 'inertia_yy', 'inertia_xy', 'inertia_torsion'])
+

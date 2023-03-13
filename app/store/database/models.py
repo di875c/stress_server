@@ -48,22 +48,26 @@ class BaseICom(Base):
     time_created = Column(TIMESTAMP, nullable=False, server_default=func.now())
     time_updated = Column(TIMESTAMP, onupdate=func.now())
 
+
 @declarative_mixin
 class XYZMixin:
     __abstract__ = True
-    cog_x = Column(Float(), nullable=False)
-    cog_y = Column(Float(), nullable=False)
-    cog_z = Column(Float(), nullable=False)
+    coord_x = Column(Float(), nullable=False)
+    coord_y = Column(Float(), nullable=False)
+    coord_z = Column(Float(), nullable=False)
+
 
 @declarative_mixin
 class ReferenceMixin:
     __abstract__ = True
+
     @declared_attr
     def frame(cls):
         return Column('frame', Integer, ForeignKey('frame.number', ondelete="CASCADE",
                                                            onupdate="CASCADE"), nullable=False)
     stringer = Column('stringer', Integer, nullable=False)
     side = Column('side', String(3), nullable=False)
+
     @declared_attr
     def __table_args__(cls):
         return (ForeignKeyConstraint(['stringer', 'side'], ['stringer.number', 'stringer.side'],
@@ -93,19 +97,35 @@ class Structure(Base):
     number = Column('number', Float(precision=1), nullable=False)
     side = Column('side', String(3), nullable=True)
     reference = PrimaryKeyConstraint(struct_type, number, side, name='unique_reference')
-    #
-    # @hybrid_property
-    # def reference_add(self):
-    #     return self.struct_type + self.number
 
 
 class SectionProperty(BaseICom, XYZMixin, ReferenceMixin):
     __tablename__ = 'section_property'
     type = Column('type', String(), ForeignKey('base_structure.name'))
-    area = Column(Float())
-    inertia_xx = Column(Float())
-    inertia_yy = Column(Float())
-    inertia_zz = Column(Float())
+    area = Column('A', Float())
+    inertia_xx = Column('I1', Float())
+    inertia_yy = Column('I2', Float())
+    inertia_xy = Column('I12', Float())
+    inertia_torsion = Column('J', Float())
+    alpha = Column(Float())
+    inertia_min = Column('Imin', Float())
+    inertia_max = Column('Imax', Float())
+
+
+class Section(BaseICom, XYZMixin, ReferenceMixin):
+    __tablename__ = 'sections'
+    type = Column(String(), nullable=False)
+    section_type = Column(String(), nullable=False)
+    height = Column(Float())
+    width_1 = Column(Float(), nullable=False)
+    th_1 = Column(Float())
+    width_2 = Column(Float())
+    th_2 = Column(Float())
+    width_3 = Column(Float())
+    th_3 = Column(Float())
+    width_4 = Column(Float())
+    th_4 = Column(Float())
+    alpha = Column(Float(), nullable=False)
 
 
 class Material(BaseICom):
@@ -122,55 +142,67 @@ class Mass(BaseICom, XYZMixin, ReferenceMixin):
     weight = Column(Float())
 
 
-class NodeElement(Base):
-    __tablename__ = 'NodeElement'
-    node = Column('node', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
-    element = Column('element', Integer, ForeignKey('element.uid', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
+# class NodeElement(Base):
+#     __tablename__ = 'NodeElement'
+#     node = Column('node', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
+#     element = Column('element', Integer, ForeignKey('element.uid', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
 
 
 class Node(ReferenceMixin, BaseICom, XYZMixin, ):
     __tablename__ = 'node'
-    # reference_type1 = Column('reference_type1', String(20), nullable=False)
-    # reference_number1 = Column('reference_number1', Float(precision=1), nullable=False)
-    # reference_side1 = Column('reference_side1', String(3), nullable=True)
-    # __table_args__ = (ForeignKeyConstraint(['reference_type1', 'reference_number1', 'reference_side1'],
-    #                                        ['structure_table.struct_type', 'structure_table.number',
-    #                                         'structure_table.side'], name='reference_1'), {})
-    # reference_type2 = Column('reference_type2', String(20), nullable=False)
-    # reference_number2 = Column('reference_number2', Float(precision=1), nullable=False)
-    # reference_side2 = Column('reference_side2', String(3), nullable=True)
-    # __table_args__ = (ForeignKeyConstraint(['reference_type2', 'reference_number2', 'reference_side2'],
-    #                                        ['structure_table.struct_type', 'structure_table.number',
-    #                                         'structure_table.side'], name='reference_2'), {})
-    # frame = Column('frame', Float(precision=1), ForeignKey('frame.number', ondelete="CASCADE",
-    #                                                               onupdate="CASCADE"), nullable=False)
-    # stringer = Column('stringer', Float(precision=1), nullable=False)
-    # side = Column('side', String(3), nullable=False)
-    # __table_args__ = (ForeignKeyConstraint(['stringer', 'side'], ['stringer.number', 'stringer.side'],
-    #                                        name='stringer_reference'), {})
-    elements = relationship('Element', secondary=NodeElement.__table__, back_populates="nodes", lazy='selectin')
+    # elements = relationship('Element', secondary=NodeElement.__table__, back_populates="nodes", lazy='selectin')
 
 
 class Element(BaseICom):
     __tablename__ = 'element'
-    nodes = relationship('Node', secondary=NodeElement.__table__, back_populates="elements", lazy='selectin')
+    # nodes = relationship('Node', secondary=NodeElement.__table__, back_populates="elements", lazy='selectin')
     element_type = Column('base_structure', String, ForeignKey('base_structure.name'), nullable=False) #foreign key to element type
-    property_id = Column('property', Integer, ForeignKey('property.uid'))
-    offset = Column(String)
-    node_start = Column('node_start', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"))
-    node_end = Column('node_end', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"))
-    property_start = Column('property_start', Integer, ForeignKey('property.uid'))
-    property_end = Column('property_end', Integer, ForeignKey('property.uid'))
-    position = relationship('Node', back_populates="elements", lazy='selectin', uselist=False, foreign_keys=[node_start])
+    property_id = Column('pid', Integer, ForeignKey('property.uid'))
+    offset_start = Column(Float)
+    offset_end = Column(Float)
+    node_1 = Column('node_1', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"))
+    node_2 = Column('node_2', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"))
+    node_3 = Column('node_3', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"))
+    node_4 = Column('node_4', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"))
+    position = relationship('Node', lazy='selectin', uselist=False, foreign_keys=[node_1])
+    off_1_x = Column(Float)
+    off_1_y = Column(Float)
+    off_1_z = Column(Float)
+    off_2_x = Column(Float)
+    off_2_y = Column(Float)
+    off_2_z = Column(Float)
 
+    @hybrid_property
+    def offset_1(self):
+        if None in (self.off_1_x, self.off_1_y, self.off_1_z):
+            return None
+        return f"<{self.off_1_x} {self.off_1_y} {self.off_1_z}>"
+
+    @offset_1.setter
+    def offset_1(self, offset_1):
+        self.off_1_x, self.off_1_y, self.off_1_z = [float(x) for x in offset_1[1:-1].split()]
+
+    @hybrid_property
+    def offset_2(self):
+        if None in (self.off_2_x, self.off_2_y, self.off_2_z):
+            return None
+        return f"<{self.off_2_x} {self.off_2_y} {self.off_2_z}>"
+
+    @offset_2.setter
+    def offset_2(self, offset_2):
+        self.off_2_x, self.off_2_y, self.off_2_z = [float(x) for x in offset_2[1:-1].split()]
 
 class ElProperty(BaseICom):
     """
     TODO: COG to be concidered, what point has to be used?
     """
     __tablename__ = 'property'
-    cross_section = Column('cross_section', Integer, ForeignKey('section_property.uid'))
-    shell_thick = Column('shell_thick', Float)
+    property_type = Column('type', String)
     material_id = Column('material', Integer, ForeignKey('material.uid'))
-    material = relationship("Material", lazy='selectin')
-    section = relationship("SectionProperty", lazy='selectin')
+    shell_thick = Column('shell_thick', Float)
+    section_start = Column('start_property', Integer, ForeignKey('section_property.uid'))
+    section_end = Column('end_property', Integer, ForeignKey('section_property.uid'))
+    property_start = relationship("SectionProperty", lazy='selectin', uselist=False,
+                                  foreign_keys=[section_start])
+    property_end = relationship("SectionProperty", lazy='selectin', uselist=False,
+                                foreign_keys=[section_end])
