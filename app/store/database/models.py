@@ -41,9 +41,11 @@ Session = sessionmaker(
 )
 
 
+
 class BaseICom(Base):
     __abstract__ = True
-    uid = Column(Integer, Identity(start=1, cycle=True), unique=True, primary_key=True)
+    uid = Column('uid', Integer, nullable=False, primary_key=True)
+    type = Column(String)
     comment = Column('comment', String())
     time_created = Column(TIMESTAMP, nullable=False, server_default=func.now())
     time_updated = Column(TIMESTAMP, onupdate=func.now())
@@ -74,6 +76,18 @@ class ReferenceMixin:
                                            name='stringer_reference'), {})
 
 
+class SectionPropertyMap(Base):
+    __tablename__ = 'SectionPropertyMap'
+    frame = Column('frame', Integer, ForeignKey('frame.number', ondelete="CASCADE",
+                                    onupdate="CASCADE"), nullable=False, primary_key=True)
+    uid = Column('uid', Integer, ForeignKey('section_property.uid', ondelete="CASCADE",
+                                                                  onupdate="CASCADE"), primary_key=True)
+    stringer = Column('stringer', Integer, nullable=False, primary_key=True)
+    side = Column('side', String(3), nullable=False, primary_key=True)
+    __table_args__ = (ForeignKeyConstraint(['stringer', 'side'], ['stringer.number', 'stringer.side'],
+                                           name='stringer_reference'), {})
+
+
 class BaseStructure(Base):
     __tablename__ = 'base_structure'
     name = Column('name', String(20), unique=True, nullable=False, primary_key=True)
@@ -99,23 +113,23 @@ class Structure(Base):
     reference = PrimaryKeyConstraint(struct_type, number, side, name='unique_reference')
 
 
-class SectionProperty(BaseICom, XYZMixin, ReferenceMixin):
+class SectionProperty(BaseICom, XYZMixin):
     __tablename__ = 'section_property'
-    type = Column('type', String(), ForeignKey('base_structure.name'))
+    geo_type = Column('Ref_Geometry', String, ForeignKey('base_structure.name'))
     area = Column('A', Float())
-    inertia_xx = Column('I1', Float())
+    inertia_zz = Column('I1', Float())
     inertia_yy = Column('I2', Float())
-    inertia_xy = Column('I12', Float())
+    inertia_yz = Column('I12', Float())
     inertia_torsion = Column('J', Float())
     alpha = Column(Float())
     inertia_min = Column('Imin', Float())
     inertia_max = Column('Imax', Float())
+    positions = relationship("SectionPropertyMap", lazy='selectin')
 
 
 class Section(BaseICom, XYZMixin, ReferenceMixin):
     __tablename__ = 'sections'
-    type = Column(String(), nullable=False)
-    section_type = Column(String(), nullable=False)
+    geo_type = Column('Ref_Geometry', String, ForeignKey('base_structure.name'))
     height = Column(Float())
     width_1 = Column(Float(), nullable=False)
     th_1 = Column(Float())
@@ -126,7 +140,6 @@ class Section(BaseICom, XYZMixin, ReferenceMixin):
     width_4 = Column(Float())
     th_4 = Column(Float())
     alpha = Column(Float(), nullable=False)
-
 
 class Material(BaseICom):
     __tablename__ = 'material'
@@ -148,7 +161,7 @@ class Mass(BaseICom, XYZMixin, ReferenceMixin):
 #     element = Column('element', Integer, ForeignKey('element.uid', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
 
 
-class Node(ReferenceMixin, BaseICom, XYZMixin, ):
+class Node(ReferenceMixin, BaseICom, XYZMixin):
     __tablename__ = 'node'
     # elements = relationship('Element', secondary=NodeElement.__table__, back_populates="nodes", lazy='selectin')
 
@@ -156,11 +169,9 @@ class Node(ReferenceMixin, BaseICom, XYZMixin, ):
 class Element(BaseICom):
     __tablename__ = 'element'
     # nodes = relationship('Node', secondary=NodeElement.__table__, back_populates="elements", lazy='selectin')
-    element_type = Column('base_structure', String, ForeignKey('base_structure.name'), nullable=False) #foreign key to element type
+    element_ref = Column('base_structure', String, ForeignKey('base_structure.name'), nullable=False) #foreign key to element type
     property_id = Column('pid', Integer, ForeignKey('property.uid'))
-    offset_start = Column(Float)
-    offset_end = Column(Float)
-    node_1 = Column('node_1', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"))
+    node_1 = Column('node_1', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
     node_2 = Column('node_2', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"))
     node_3 = Column('node_3', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"))
     node_4 = Column('node_4', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"))
@@ -193,11 +204,7 @@ class Element(BaseICom):
         self.off_2_x, self.off_2_y, self.off_2_z = [float(x) for x in offset_2[1:-1].split()]
 
 class ElProperty(BaseICom):
-    """
-    TODO: COG to be concidered, what point has to be used?
-    """
     __tablename__ = 'property'
-    property_type = Column('type', String)
     material_id = Column('material', Integer, ForeignKey('material.uid'))
     shell_thick = Column('shell_thick', Float)
     section_start = Column('start_property', Integer, ForeignKey('section_property.uid'))

@@ -62,12 +62,6 @@ def model_schema_factory(bd_model):
     return ModelSchema
 
 
-# class MaterialSchema(BaseSchema):
-#     class Meta:
-#         model = models.Material
-#     properties = fields.List(fields.Nested("ElPropertySchema", only=("uid",)))
-
-
 class NodeSchema(BaseSchema):
     class Meta:
         model = models.Node
@@ -75,7 +69,6 @@ class NodeSchema(BaseSchema):
         load_instance = False
         include_relationships = True
         ordered = True
-    # elements = CustomList(fields.Nested("ElementSchema", only=("uid",)))
 
 
 class ElementSchema(BaseSchema):
@@ -85,18 +78,9 @@ class ElementSchema(BaseSchema):
         load_instance = False
         include_relationships = True
         ordered = True
-    # nodes = CustomList(fields.Nested(lambda: NodeSchema(only=REFERENCE_LST)))
     position = fields.Nested("NodeSchema", only=REFERENCE_LST[1:])
     offset_1 = fields.String()
     offset_2 = fields.String()
-
-
-
-# class NodeElementSchema(Schema):
-# class NodeElementSchema(BaseSchema):
-#     __model__ = models.NodeElement
-#     node = fields.Integer()
-#     element = fields.Integer()
 
 
 class ElPropertySchema(BaseSchema):
@@ -110,3 +94,12 @@ class ElPropertySchema(BaseSchema):
     property_start = fields.Nested(model_schema_factory(models.SectionProperty), only=['area', 'inertia_xx', 'inertia_yy', 'inertia_xy', 'inertia_torsion'])
     property_end = fields.Nested(model_schema_factory(models.SectionProperty), only=['area', 'inertia_xx', 'inertia_yy', 'inertia_xy', 'inertia_torsion'])
 
+
+class SectionPropertySchema(BaseSchema):
+    class Meta:
+        model = models.SectionProperty
+        include_fk = True
+        load_instance = False
+        include_relationships = True
+        ordered = True
+    positions = CustomList(fields.Nested(model_schema_factory(models.SectionPropertyMap), only=REFERENCE_LST[1:]))
