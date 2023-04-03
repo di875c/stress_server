@@ -1,8 +1,8 @@
 import aiohttp_jinja2
 import asyncio
 from .utils import ISection
-from app.store.database.models import *
-from app.store.database.mod_interface import *
+from app.store.database import models
+from app.store.database import mod_interface
 from aiohttp import web
 from sqlalchemy.future import select
 from sqlalchemy.orm import aliased
@@ -31,21 +31,22 @@ def recur_unpack(lst: list, return_lst=None) -> list:
     return return_lst
 
 
-def extract_nested_parameters(base_schema: SQLAlchemyAutoSchema):
+def extract_nested_parameters(base_schema: mod_interface.SQLAlchemyAutoSchema):
     for field in base_schema.fields:
         if 'nested' in base_schema.fields[field].__dict__:
             current_schema = base_schema.fields[field].schema
             ref_model = current_schema.Meta.model
             return field, current_schema, ref_model
-    raise ValidationError(message=f'No relation model exists')
+    raise mod_interface.ValidationError(message=f'No relation model exists')
 
 
 def prepare_criteria_from_html(data: dict) -> tuple:
     # take dict from request.parameters and preparing list of condition for orm request to DB
     class_name = data['table_name']
     modify_data, modify_sign, ref_keys, ref_field_st = {}, {}, {}, set()
-    model = globals()[class_name]
-    base_schema = globals()[class_name + 'Schema']() if class_name + 'Schema' in globals() else model_schema_factory(model)()
+    model = models.__dict__[class_name]
+    base_schema = mod_interface.__dict__[class_name + 'Schema']() if class_name + 'Schema' in globals() else \
+        mod_interface.model_schema_factory(model)()
     for _key, _val in data.items():
         if _key != 'table_name':
             _sign, *_value = _val.split()
@@ -76,13 +77,13 @@ def error_function(func):
             if isinstance(args[0], DbView):
                 model_name = args[0]._request.rel_url.query.get('table_name', None)
                 # print(model_name)
-                if not model_name or model_name not in globals():
+                if not model_name or model_name not in models.__dict__:
                     return web.Response(body=f"There is no table in Database with name {model_name}", status=502)
             result = await func(*args, **kwargs)
         except SQLAlchemyError as e:
             error = str(e.__dict__['orig'])
             return web.Response(status=502, body="SQL error appears\n {}".format(error))
-        except ValidationError as e:
+        except mod_interface.ValidationError as e:
             error = str(e.messages)
             return web.Response(status=422, body="Server validation error appears\n {}".format(error))
         except ConnectionRefusedError as e:
@@ -111,7 +112,7 @@ async def section_analysis(request):
         section = globals()[class_name](*input_data)
         # return {'title': f"cross-section =  {section.area}\n cog = {section.cog}\n, inertia= {section.inertia}"}
         return web.Response(body=f"cross-section area =  {section.area}\n cog = {section.cog}\n, inertia= {section.inertia}")
-    except ValidationError as e:
+    except mod_interface.ValidationError as e:
         error = str(e.messages)
         return web.Response(body="Error appears\n {}".format(error))
 
@@ -125,7 +126,7 @@ class DbView(web.View):
         :return: json with lines from table according to request
         """
         data = dict(self.request.rel_url.query)
-        async with Session() as session:
+        async with models.Session() as session:
             async with session.begin():
                 criteria_list, model, schema, ref_fields = prepare_criteria_from_html(data)
                 model_objects = await session.execute(select(model).where(*criteria_list)) if len(ref_fields) == 0 else\
@@ -142,25 +143,21 @@ class DbView(web.View):
         :param request: db?table_name=Structure&struct_type=== Stringer&name==< 6
         :return: add objects to database, accept or mistake as response
         """
-        # try:
         data_from_url = dict(self.request.rel_url.query)
-        # print(data_from_url)
         class_name = data_from_url.pop('table_name')
-        # class_name = self.request.rel_url.query['table_name']
-        # print(class_name)
-        async with Session() as session:
+        async with models.Session() as session:
             async with session.begin():
-                model = globals()[class_name]
+                model = models.__dict__[class_name]
                 if 'Content-Type' in self.request.headers and self.request.headers['Content-Type'] == 'application/json':
-                    schema = globals()[class_name + 'Schema'](many=True) if class_name + 'Schema' in globals() \
-                        else model_schema_factory(model)(many=True)
+                    schema = mod_interface.__dict__[class_name + 'Schema'](many=True) if class_name + 'Schema' in \
+                                    mod_interface.__dict__ else mod_interface.model_schema_factory(model)(many=True)
                     data = await self.request.json()
-                    print(data)
+                    # print(data)
                     model_objects = schema.load(data)
                     result = session.add_all(model_objects)
                 else:
-                    schema = globals()[class_name + 'Schema'](many=False) if class_name + 'Schema' in globals() \
-                        else model_schema_factory(model)(many=False)
+                    schema = mod_interface.__dict__[class_name + 'Schema'](many=False) if class_name + 'Schema' \
+                            in mod_interface.__dict__ else mod_interface.model_schema_factory(model)(many=False)
                     model_object = schema.load({'parameter': data_from_url})
                     session.add(model_object)
         return web.Response(body=b"Successfully added to DB")
@@ -181,18 +178,18 @@ class DbView(web.View):
         # print(data_from_url)
         class_name = data_from_url.pop('table_name')
         # print(class_name)
-        async with Session() as session:
+        async with models.Session() as session:
             async with session.begin():
                 # data = await self.request.json()
-                model = globals()[class_name]
+                model = models.__dict__[class_name]
                 if 'Content-Type' in self.request.headers and self.request.headers['Content-Type'] == 'application/json':
-                    schema = globals()[class_name + 'Schema'](many=True) if class_name + 'Schema' in globals() \
-                        else model_schema_factory(model)(many=True)
+                    schema = mod_interface.__dict__[class_name + 'Schema'](many=True) if class_name + 'Schema' in \
+                        mod_interface.__dict__ else mod_interface.model_schema_factory(model)(many=True)
                     data = await self.request.json()
                     ser_data = [*schema.dump(*data.values()).values()][0]
                 else:
-                    schema = globals()[class_name + 'Schema'](many=False) if class_name + 'Schema' in globals() \
-                        else model_schema_factory(model)(many=False)
+                    schema = mod_interface.__dict__[class_name + 'Schema'](many=False) if class_name + 'Schema' in \
+                            mod_interface.__dict__ else mod_interface.model_schema_factory(model)(many=False)
                     ser_data = [*schema.dump(data_from_url).values()]
                 # print(ser_data)
                 for _item in ser_data:
@@ -221,13 +218,14 @@ class DbView(web.View):
         data = dict(self.request.rel_url.query)
         class_name = data['table_name']
         # print(data)
-        async with Session() as session:
+        async with models.Session() as session:
             async with session.begin():
-                model = globals()[class_name]
+                model = models.__dict__[class_name]
                 if 'Content-Type' in  self.request.headers and self.request.headers['Content-Type'] == 'application/json':
                     # If delete method with excel using. Only uid index is taken into account.
-                    schema = globals()[class_name + 'Schema'](many=True, only=('uid',)) if class_name + 'Schema' \
-                            in globals() else model_schema_factory(model + 'Schema')(many=True, only=('uid',))
+                    schema = mod_interface.__dict__[class_name + 'Schema'](many=True, only=('uid',)) \
+                        if class_name + 'Schema' in mod_interface.__dict__ else \
+                        mod_interface.model_schema_factory(model + 'Schema')(many=True, only=('uid',))
                     data = await self.request.json()
                     ser_data = schema.dump(data['parameters'])
                     # print(ser_data)

@@ -17,8 +17,11 @@ RUN apk update \
 # устанавливаем зависимости
 RUN pip3 install --upgrade pip
 COPY ./requirements.txt .
-#RUN pip3 install numpy==1.23.5
 RUN pip3 install -r requirements.txt
 
 # копируем содержимое текущей папки в контейнер
 COPY . .
+
+# производим предварительную настройку
+
+ENTRYPOINT ["/usr/src/stress_server/entrypoint.sh"]

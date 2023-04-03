@@ -27,10 +27,11 @@ DATABASE = {
         'database': os.environ.get('POSTGRES_DB', 'stress_postgres'),
         'username': os.environ.get('POSTGRES_USER', 'stress_user'),
         'password': os.environ.get('POSTGRES_PASSWORD', 'stress_1234!'),
-        'host': os.environ.get('POSTGRES_HOST', 'localhost'),
+        'host': os.environ.get('POSTGRES_HOST', 'db'),
         'port': os.environ.get('POSTGRES_PORT', '5432')
 }
-PG_DATABASE = 'postgresql+asyncpg://stress_user:stress_1234!@localhost/stress_postgres'
+# print(DATABASE)
+PG_DATABASE = 'postgresql+asyncpg://stress_user:stress_1234!@db/stress_postgres'
 # создаем движок
 engine = create_async_engine(PG_DATABASE, echo=True)
 # создаем метод описания БД (Создаем базовый класс для декларативных определений классов.)
