@@ -12,7 +12,8 @@ ENV PYTHONUNBUFFERED 1
 RUN apk update \
 #    && apk add --no-cache --update \
     && apk add \
-      python3-dev gcc g++ subversion postgresql-dev gfortran musl-dev
+      postgresql-dev 
+	  #gfortran musl-dev g++ subversion python3-dev gcc 
 
 # устанавливаем зависимости
 RUN pip3 install --upgrade pip

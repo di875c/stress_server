@@ -1,10 +1,10 @@
 #aiohttp
 aiohttp==3.7.3
-aiohttp-jinja2==1.5
-numpy==1.23.5
 
+# html representation
+#aiohttp-jinja2==1.5
 #Jinja
-Jinja2==3.0.3
+#Jinja2==3.0.3
 
 # Databases
 SQLAlchemy==1.4.43
@@ -18,3 +18,8 @@ marshmallow-sqlalchemy
 pytz
 python-dotenv
 ipython
+
+
+gunicorn==20.0.4
+
+

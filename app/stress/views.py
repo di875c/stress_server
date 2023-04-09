@@ -1,11 +1,9 @@
-import aiohttp_jinja2
+#import aiohttp_jinja2
 import asyncio
-from .utils import ISection
 from app.store.database import models
 from app.store.database import mod_interface
 from aiohttp import web
 from sqlalchemy.future import select
-from sqlalchemy.orm import aliased
 import json, sys
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import update, bindparam, delete
@@ -65,9 +63,10 @@ def prepare_criteria_from_html(data: dict) -> tuple:
                           for _key, _val in modify_data.items()]), model, base_schema, ref_field_st)
 
 
-@aiohttp_jinja2.template("index.html")
+# @aiohttp_jinja2.template("index1.html")
 async def index(request):
-    return {'title': 'пишем первое приложение на aio http'}
+    return web.Response(body= b"Server for data store after construction sizing aio http. Url has to started from \
+db?table_name=<table_name>&<parameters>. get, post, put, del allowed for DB interaction")
 
 
 def error_function(func):
@@ -93,28 +92,6 @@ def error_function(func):
         #     return web.Response(body='some new error. {}'.format(error), status=422)
         return result
     return _wrapper
-
-
-# @aiohttp_jinja2.template("index1.html")
-async def section_analysis(request):
-    """
-    calculate cross-section a*b with time delay = time
-    :param request: cross_section?sec_type=ISection&w1=4&h=8&w2=6&t1=2&t2=1&t3=3&x=0&y=0&alpha=0&time=0
-    :return:
-    """
-    parameters = request.rel_url.query
-    await asyncio.sleep(int(parameters['time']))
-    try:
-        # print(parameters)
-        class_name = parameters['sec_type']
-        input_data = [float(_val) for _key, _val in parameters.items() if _key not in ('sec_type', 'time')]
-        # print(input_data)
-        section = globals()[class_name](*input_data)
-        # return {'title': f"cross-section =  {section.area}\n cog = {section.cog}\n, inertia= {section.inertia}"}
-        return web.Response(body=f"cross-section area =  {section.area}\n cog = {section.cog}\n, inertia= {section.inertia}")
-    except mod_interface.ValidationError as e:
-        error = str(e.messages)
-        return web.Response(body="Error appears\n {}".format(error))
 
 
 class DbView(web.View):
