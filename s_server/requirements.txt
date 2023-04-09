@@ -1,0 +1,25 @@
+#aiohttp
+aiohttp==3.7.3
+
+# html representation
+#aiohttp-jinja2==1.5
+#Jinja
+#Jinja2==3.0.3
+
+# Databases
+SQLAlchemy==1.4.43
+#psycopg2  !!!not for async
+asyncpg
+alembic
+marshmallow
+marshmallow-sqlalchemy
+
+#python
+pytz
+python-dotenv
+ipython
+
+
+gunicorn==20.0.4
+
+
