@@ -22,16 +22,18 @@ from sqlalchemy import (
 # from sqlalchemy.sql import func
 from sqlalchemy.ext.hybrid import hybrid_property
 
-DATABASE = {
-        'drivername': os.environ.get('POSTGRES_ENGINE', 'postgresql+asyncpg'),
-        'database': os.environ.get('POSTGRES_DB', 'stress_postgres'),
-        'username': os.environ.get('POSTGRES_USER', 'stress_user'),
-        'password': os.environ.get('POSTGRES_PASSWORD', 'stress_1234!'),
-        'host': os.environ.get('POSTGRES_HOST', 'db'),
-        'port': os.environ.get('POSTGRES_PORT', '5432')
+
+
+
+DB = {
+        'drivername': os.environ.get('POSTGRES_ENGINE'),
+        'database': os.environ.get('POSTGRES_DB'),
+        'username': os.environ.get('POSTGRES_USER'),
+        'password': os.environ.get('POSTGRES_PASSWORD'),
+        'url': os.environ.get('POSTGRES_URL')
 }
-# print(DATABASE)
-PG_DATABASE = 'postgresql+asyncpg://stress_user:stress_1234!@db/stress_postgres'
+
+PG_DATABASE = f"{DB['drivername']}://{DB['username']}:{DB['password']}@{DB['url']}/{DB['database']}"
 # создаем движок
 engine = create_async_engine(PG_DATABASE, echo=True)
 # создаем метод описания БД (Создаем базовый класс для декларативных определений классов.)
