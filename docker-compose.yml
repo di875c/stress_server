@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  web:
+    # Берем Dockerfile из каталога app
+    build: ./s_server
+    # Запускаем тестовый сервер
+    command: python main.py
+    # куда будут помещены данные из каталога app
+    volumes:
+      - ./s_server/:/usr/src/s_server/
+    # Открываем порт 8080 внутри и 8000 снаружи
+    ports:
+      - 8200:8080
+    # Файл содержащий переменные для контейнера
+    env_file:
+      - ./.env.dev
+  db:
+   image: postgres:12.0-alpine # postgres 12.0 version
+   env_file:
+     - postgres.env # configuration postgres file
+   volumes:
+     - postgres_volume:/var/lib/postgresql/data/ # persist data even if container shuts down
+     
+volumes:
+  postgres_volume:
