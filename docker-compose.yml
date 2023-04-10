@@ -18,7 +18,7 @@ services:
   db:
    image: postgres:12.0-alpine # postgres 12.0 version
    env_file:
-     - postgres.env # configuration postgres file
+     - .env.prod.db # configuration postgres file
    volumes:
      - postgres_volume:/var/lib/postgresql/data/ # persist data even if container shuts down
      
