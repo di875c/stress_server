@@ -1,5 +1,5 @@
 # образ на основе которого создаём контейнер
-FROM python:3.8.10-alpine
+FROM python:3.9-alpine
 # рабочая директория внутри проекта
 WORKDIR /usr/src/stress_server
 
