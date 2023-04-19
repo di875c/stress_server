@@ -33,7 +33,9 @@ DB = {
         'url': os.environ.get('POSTGRES_URL')
 }
 
-PG_DATABASE = f"{DB['drivername']}://{DB['username']}:{DB['password']}@{DB['url']}/{DB['database']}"
+# PG_DATABASE = f"{DB['drivername']}://{DB['username']}:{DB['password']}@{DB['url']}/{DB['database']}"
+PG_DATABASE = "postgresql+asyncpg://stress_user:stress_1234!@localhost:5432/stress_postgres"
+print(PG_DATABASE)
 # создаем движок
 engine = create_async_engine(PG_DATABASE, echo=True)
 # создаем метод описания БД (Создаем базовый класс для декларативных определений классов.)
@@ -162,10 +164,10 @@ class Mass(BaseICom, XYZMixin, ReferenceMixin):
     weight = Column(Float())
 
 
-# class NodeElement(Base):
+# class NodeRBE(Base):
 #     __tablename__ = 'NodeElement'
 #     node = Column('node', Integer, ForeignKey('node.uid', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
-#     element = Column('element', Integer, ForeignKey('element.uid', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
+#     rbe = Column('rbe', Integer, ForeignKey('rbe.uid', ondelete="CASCADE", onupdate="CASCADE"), primary_key=True)
 
 
 class Node(ReferenceMixin, BaseICom, XYZMixin):
@@ -211,6 +213,7 @@ class Element(BaseICom):
     def offset_2(self, offset_2):
         self.off_2_x, self.off_2_y, self.off_2_z = [float(x) for x in offset_2[1:-1].split()]
 
+
 class ElProperty(BaseICom):
     __tablename__ = 'property'
     material_id = Column('material', Integer, ForeignKey('material.uid'))
@@ -221,3 +224,14 @@ class ElProperty(BaseICom):
                                   foreign_keys=[section_start])
     property_end = relationship("SectionProperty", lazy='selectin', uselist=False,
                                 foreign_keys=[section_end])
+
+
+# class RBE(BaseICom):
+#     __tablename__ = 'rbe'
+#     node = Column('node', Integer, ForeignKey('node.uid'))
+#     nodes = relationship('Node', secondary=Node.__table__, back_populates="rbe", lazy='selectin')
+
+
+class Others(BaseICom):
+    __tablename__ = 'other'
+    card_str = Column(String)
