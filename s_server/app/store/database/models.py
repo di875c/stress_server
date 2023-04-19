@@ -79,6 +79,10 @@ class ReferenceMixin:
                                            name='stringer_reference'), {})
 
 
+class CoordSys(BaseICom, XYZMixin):
+    __tablename__ = 'cs'
+
+
 class SectionPropertyMap(Base):
     __tablename__ = 'SectionPropertyMap'
     frame = Column('frame', Integer, ForeignKey('frame.number', ondelete="CASCADE",
@@ -166,6 +170,7 @@ class Mass(BaseICom, XYZMixin, ReferenceMixin):
 
 class Node(ReferenceMixin, BaseICom, XYZMixin):
     __tablename__ = 'node'
+    cs = Column('cs', Integer, ForeignKey('cs.uid'))
     # elements = relationship('Element', secondary=NodeElement.__table__, back_populates="nodes", lazy='selectin')
 
 
