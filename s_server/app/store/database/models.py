@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.engine.url import URL
 from sqlalchemy.ext.declarative import declarative_base
-import os
+import os, dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker, relationship, declarative_mixin, declared_attr
 from sqlalchemy import (
@@ -33,9 +33,8 @@ DB = {
         'url': os.environ.get('POSTGRES_URL')
 }
 
-# PG_DATABASE = f"{DB['drivername']}://{DB['username']}:{DB['password']}@{DB['url']}/{DB['database']}"
-PG_DATABASE = "postgresql+asyncpg://stress_user:stress_1234!@localhost:5432/stress_postgres"
-print(PG_DATABASE)
+PG_DATABASE = f"{DB['drivername']}://{DB['username']}:{DB['password']}@{DB['url']}/{DB['database']}"
+
 # создаем движок
 engine = create_async_engine(PG_DATABASE, echo=True)
 # создаем метод описания БД (Создаем базовый класс для декларативных определений классов.)
