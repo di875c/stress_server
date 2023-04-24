@@ -12,8 +12,8 @@ CHECK_OPERATOR = {
     '<': lambda x, y: x < y,
     '>': lambda x, y: x > y,
     '==': lambda x, y: x == y,
-    '=<': lambda x, y: x <= y,
-    '=>': lambda x, y: x >= y,
+    '<=': lambda x, y: x <= y,
+    '>=': lambda x, y: x >= y,
     'between': lambda x, y: (y[0] <= x, x <= y[1]),
 }
 
@@ -43,8 +43,8 @@ def prepare_criteria_from_html(data: dict) -> tuple:
     class_name = data['table_name']
     modify_data, modify_sign, ref_keys, ref_field_st = {}, {}, {}, set()
     model = models.__dict__[class_name]
-    base_schema = mod_interface.__dict__[class_name + 'Schema']() if class_name + 'Schema' in globals() else \
-        mod_interface.model_schema_factory(model)()
+    base_schema = mod_interface.__dict__[class_name + 'Schema']() if class_name + 'Schema' in mod_interface.__dict__  \
+        else mod_interface.model_schema_factory(model)()
     for _key, _val in data.items():
         if _key != 'table_name':
             _sign, *_value = _val.split()
@@ -108,7 +108,8 @@ class DbView(web.View):
                 criteria_list, model, schema, ref_fields = prepare_criteria_from_html(data)
                 model_objects = await session.execute(select(model).where(*criteria_list)) if len(ref_fields) == 0 else\
                     await session.execute(select(model).outerjoin(*ref_fields).where(*criteria_list))
-                # print(schema.(model_objects.scalars(), many=True))
+                # print(schema.dump(model_objects.scalars(), many=True))
+                print(schema)
                 out_data = schema.dump(model_objects.scalars(), many=True)
                 print('size of json attached: ', sys.getsizeof(out_data))
         return web.Response(body=json.dumps(out_data))
