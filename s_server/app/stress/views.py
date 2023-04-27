@@ -88,8 +88,10 @@ def error_function(func):
         except ConnectionRefusedError as e:
             error = str(e.strerror)
             return web.Response(status=502, body="Connection to Database error appears\n {}".format(error))
-        # except Exception as error:
-        #     return web.Response(body='some new error. {}'.format(error), status=422)
+        except ValueError as e:
+            return web.Response(status=502, body="Data format mistake.\n {}".format(e))
+        except Exception as error:
+            return web.Response(body='some new error. {}'.format(error), status=422)
         return result
     return _wrapper
 

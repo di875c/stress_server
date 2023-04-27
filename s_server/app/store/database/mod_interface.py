@@ -91,8 +91,8 @@ class ElPropertySchema(BaseSchema):
         include_relationships = True
         ordered = True
     material = fields.Nested(model_schema_factory(models.Material), only=("uid",))
-    property_start = fields.Nested(model_schema_factory(models.SectionProperty), only=['area', 'inertia_xx', 'inertia_yy', 'inertia_xy', 'inertia_torsion'])
-    property_end = fields.Nested(model_schema_factory(models.SectionProperty), only=['area', 'inertia_xx', 'inertia_yy', 'inertia_xy', 'inertia_torsion'])
+    property_start = fields.Nested(model_schema_factory(models.SectionProperty), only=['area', 'inertia_yy', 'inertia_zz', 'inertia_yz', 'inertia_torsion'])
+    property_end = fields.Nested(model_schema_factory(models.SectionProperty), only=['area', 'inertia_yy', 'inertia_zz', 'inertia_yz', 'inertia_torsion'])
 
 
 class SectionPropertySchema(BaseSchema):
